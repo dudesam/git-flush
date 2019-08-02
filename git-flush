@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# Script:		Facilitate usability of local repo
+# Developer:	Spirin Anton
+# Usage:		copy in some local folder
+#				add the folder in your %PATH%
+#				or add alias in git
+# Example:		git flush
+#
+
+# Maintain commands
+fn_flush()
+{
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Remove deleted branches from cache in repo"
+	sleep .5
+	git fetch --prune;
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Remove references to deleted branches"
+	sleep .5
+	git remote prune origin;
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Cleaning up old local branches"
+	sleep .5
+	git branch -vv | grep "origin/.*: gone]" | awk '{print $1}' | xargs git branch -D;
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Remove untracked files/directories and ignored files in repo"
+	sleep .5
+	git clean -dfx;
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Starting Garbage Collector"
+	sleep .5
+	git gc;
+
+	echo ""
+	echo "- - - - - - - - - - - - - - - - - - - - -"
+	echo "Starting Prune if GC was not enaugth"
+	sleep .5
+	git prune --verbose  --progress;	
+}
+
+echo ""
+echo "- - - - - - - - - - - - - - - - - - - - -"
+echo "- - - - - - - - - - - - - - - - - - - - -"
+echo "Let's get started!"
+echo "- - - - - - - - - - - - - - - - - - - - -"
+echo "- - - - - - - - - - - - - - - - - - - - -"
+sleep .5
+
+if [[ (-f "./.gitmodules") ]]
+then
+	for smod in `git config --file .gitmodules --get-regexp path | awk '{ print $2 }'`; do
+		if [[ (-f "./$smod/.git") ]]
+		then
+			echo "Pull latest content of repo and submodules"
+			sleep .5
+			git pull --recurse-submodules;
+			echo ""
+		else
+			echo "Pull latest content of repo and init submodule $smod"
+			sleep .5
+			rm -R $smod
+			git reset --hard
+			git pull;
+			git submodule update --init --recursive;
+			echo ""
+		fi;
+		
+		if [ -d "$smod" ]
+		then
+			echo "Switch into $smod"
+			sleep .5
+			cd "$smod/"
+			fn_flush;
+			cd ../
+			echo ""
+		fi;
+	done
+else
+    echo "Pull latest content of repo"
+	sleep .5
+    git pull;
+fi;
+
+fn_flush;
+
+echo ""
+echo "- - - - - - - - - - - - - - - - - - - - -"
+echo "That's all Folks!"
+echo "- - - - - - - - - - - - - - - - - - - - -"
